@@ -1,4 +1,4 @@
-const express = require('express');
+/*const express = require('express');
 const app = express();
 const mongoose = require('mongoose');
 const session = require('express-session');
@@ -32,3 +32,35 @@ app.get('/index', (req, res) => {
 app.listen(3000, () => {
   console.log('Server is running on port 3000');
 });
+*/
+const express = require('express');
+const app = express();
+const bodyParser = require('body-parser');
+const session = require('express-session');
+const mongoose = require('mongoose');
+
+// Middleware setup
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+app.use(session({ secret: 'secret', resave: false, saveUninitialized: true }));
+
+// Set view engine
+app.set('view engine', 'ejs');
+
+// Database connection
+mongoose.connect('mongodb://localhost:27017/paul-leonard-video-platform', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+});
+
+// Routes
+const indexRoutes = require('./routes/index');
+const userRoutes = require('./routes/users');
+app.use('/', indexRoutes);
+app.use('/users', userRoutes);
+
+// Start server
+app.listen(3000, () => {
+    console.log('Server started on http://localhost:3000');
+});
+
