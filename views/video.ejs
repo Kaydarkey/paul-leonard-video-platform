@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Video Page</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav>
+    <ul>
+      <li><a href="/index">Home</a></li>
+      <li><a href="/logout">Logout</a></li>
+    </ul>
+  </nav>
+  <h1>Video Page</h1>
+  <video controls>
+    <source src="<%= video.url %>" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+  <div>
+    <button id="prev" <%= !hasPrev ? 'style="display:none;"' : '' %>>Previous</button>
+    <button id="next" <%= !hasNext ? 'style="display:none;"' : '' %>>Next</button>
+  </div>
+  <button onclick="shareVideo()">Share</button>
+  <script>
+    function shareVideo() {
+      const url = window.location.href;
+      navigator.clipboard.writeText(url).then(() => {
+        alert('Video link copied to clipboard');
+      });
+    }
+    document.getElementById('prev').addEventListener('click', () => {
+      window.location.href = '/videos?videoId=' + '<%= prevVideoId %>';
+    });
+    document.getElementById('next').addEventListener('click', () => {
+      window.location.href = '/videos?videoId=' + '<%= nextVideoId %>';
+    });
+  </script>
+</body>
+</html>
