@@ -3,7 +3,6 @@ const router = express.Router();
 const authMiddleware = require('../middlewares/authMiddleware'); // Middleware to check if user is authenticated
 
 // Controllers
-const mainController = require('../controllers/mainController');
 const videoController = require('../controllers/videoController');
 
 // Home page
