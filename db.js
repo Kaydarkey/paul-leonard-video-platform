@@ -1,9 +1,8 @@
-// db.js
 const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    await mongoose.connect('mongodb+srv://<Kafui Darkey>:<YgHmWjLyPieHpbnM>@<https://cloud.mongodb.com/v2/66732ed4985e361c0318b36c#/metrics/replicaSet/66771912a6190e7a9a877263/explorer/paul-leonard-video-platform/videos/find>/<paul-leonard-video-platform>?retryWrites=true&w=majority', {
+    await mongoose.connect('mongodb://localhost:27017/paul-leonard-video-platform', {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
