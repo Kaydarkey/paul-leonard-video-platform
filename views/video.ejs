@@ -1,44 +1,46 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Video Page</title>
-  <link rel="stylesheet" href="/css/style.css">
+    <title>Video Page</title>
+    <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <nav>
-    <ul>
-      <li><a href="/index">Home</a></li>
-      <li><a href="/logout">Logout</a></li>
-    </ul>
-  </nav>
-  <h1>Video Page</h1>
-  <video controls>
-    <source src="<%= video.url %>" type="video/mp4">
-    Your browser does not support the video tag.
-  </video>
-  <div>
-    <button id="prev" <%= !hasPrev ? 'style="display:none;"' : '' %>>Previous</button>
-    <button id="next" <%= !hasNext ? 'style="display:none;"' : '' %>>Next</button>
-  </div>
-  <button onclick="shareVideo()">Share</button>
-  <script>
-    function shareVideo() {
-      const url = window.location.href;
-      navigator.clipboard.writeText(url).then(() => {
-        alert('Video link copied to clipboard');
-      });
-    }
-    document.getElementById('prev').addEventListener('click', () => {
-      window.location.href = '/videos?videoId=' + '<%= prevVideoId %>';
-    });
-    document.getElementById('next').addEventListener('click', () => {
-      window.location.href = '/videos?videoId=' + '<%= nextVideoId %>';
-    });
-  </script>
-  <footer class="footer">
-    <div class="container">
-        <p>&copy; 2024 Paul Leonard Video Platform</p>
-    </div>
-</footer>
+    <nav class="navbar">
+        <ul>
+            <li><a href="/index">Home</a></li>
+            <li><a href="/logout">Logout</a></li>
+        </ul>
+    </nav>
+    <main class="video-container">
+        <h1>Video Page</h1>
+        <video controls>
+            <source src="<%= video.url %>" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <div class="controls">
+            <button id="prev" <%= !hasPrev ? 'style="display:none;"' : '' %>>Previous</button>
+            <button id="next" <%= !hasNext ? 'style="display:none;"' : '' %>>Next</button>
+        </div>
+        <button onclick="shareVideo()">Share</button>
+        <script>
+            function shareVideo() {
+                const url = window.location.href;
+                navigator.clipboard.writeText(url).then(() => {
+                    alert('Video link copied to clipboard');
+                });
+            }
+            document.getElementById('prev').addEventListener('click', () => {
+                window.location.href = '/videos?videoId=' + '<%= prevVideoId %>';
+            });
+            document.getElementById('next').addEventListener('click', () => {
+                window.location.href = '/videos?videoId=' + '<%= nextVideoId %>';
+            });
+        </script>
+    </main>
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Paul Leonard Video Platform</p>
+        </div>
+    </footer>
 </body>
 </html>
