@@ -116,6 +116,20 @@ app.get('/signup', (req, res) => {
   res.render('signup');
 });
 
+app.post('/signup', async (req, res) => {
+  const { email, username, password } = req.body;
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = new User({ email, username, password: hashedPassword });
+    await newUser.save();
+    res.redirect('/login');
+  } catch (error) {
+    console.error('Signup error:', error);
+    res.status(400).send('Error signing up. Please ensure your email and password meet the requirements.');
+  }
+});
+
+
 
 
 // Server start
