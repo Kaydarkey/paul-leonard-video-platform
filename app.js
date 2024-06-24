@@ -104,6 +104,20 @@ app.get('/logout', (req, res) => {
   res.redirect('/login');
 });
 
+// Route for forgot password
+app.get('/reset-password', (req, res) => {
+  // Render the reset password page
+  res.render('reset-password');
+});
+
+// Route for signup
+app.get('/signup', (req, res) => {
+  // Render the signup page
+  res.render('signup');
+});
+
+
+
 // Server start
 app.listen(PORT, () => {
   console.log(`Server started on http://localhost:${PORT}`);
