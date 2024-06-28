@@ -82,7 +82,7 @@ app.get('/index', (req, res) => {
 });
 
 // Video Page
-app.get('/videos', async (req, res) => {
+app.get('/video', async (req, res) => {
   try {
     if (req.session.user) {
       const videos = await Video.find({});
