@@ -92,7 +92,9 @@ header p {
 
 form input[type="text"],
 form input[type="email"],
-form input[type="password"] {
+form input[type="password"],
+form textarea,
+form input[type="file"] {
   width: 100%;
   padding: 10px;
   margin: 10px 0;
@@ -127,13 +129,13 @@ video {
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
-.controls {
+.video-controls {
   display: flex;
   justify-content: center;
   margin-top: 10px;
 }
 
-.controls button {
+.video-controls button {
   padding: 10px;
   margin: 0 5px;
   border: none;
@@ -143,7 +145,24 @@ video {
   cursor: pointer;
 }
 
-.controls button:hover {
+.video-controls button:hover {
+  background: #555;
+}
+
+.share-button {
+  margin-top: 10px;
+}
+
+.share-button button {
+  padding: 10px;
+  border: none;
+  border-radius: 5px;
+  background: #333;
+  color: #fff;
+  cursor: pointer;
+}
+
+.share-button button:hover {
   background: #555;
 }
 
