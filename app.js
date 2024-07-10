@@ -202,7 +202,7 @@ app.get('/video', async (req, res) => {
       const hasNext = videoIndex < videos.length - 1;
       const prevVideoId = hasPrev ? videoIndex - 1 : null;
       const nextVideoId = hasNext ? videoIndex + 1 : null;
-      res.render('videos', { video, hasPrev, hasNext, prevVideoId, nextVideoId });
+      res.render('video', { video, hasPrev, hasNext, prevVideoId, nextVideoId });
     } else {
       res.redirect('/login');
     }
