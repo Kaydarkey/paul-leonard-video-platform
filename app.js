@@ -1,3 +1,4 @@
+// Required Libraries
 const express = require('express');
 const mongoose = require('mongoose');
 const session = require('express-session');
@@ -14,8 +15,7 @@ const ensureAdmin = require('./middlewares/adminAuth');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-
-  mongoose.connect('mongodb://localhost:27017/paul-leonard-video-platform')
+mongoose.connect('mongodb://localhost:27017/paul-leonard-video-platform')
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.log(err));
 
@@ -51,21 +51,28 @@ function isValidEmailDomain(email) {
   return validDomains.includes(domain);
 }
 
+// Helper function to validate password
+function isValidPassword(password) {
+  // Example password validation: at least 8 characters, 1 uppercase letter, 1 number
+  const passwordRegex = /^(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/;
+  return passwordRegex.test(password);
+}
+
 // Routes
 
 // Signup Page
-app.get('/', (req, res) => {
-  res.render('signup');
+app.get('/signup', (req, res) => {
+  res.render('signup', { message: null });
 });
 
 app.post('/signup', async (req, res) => {
   try {
     const { email, username, password } = req.body;
     if (!email || !username || !password) {
-      return res.status(400).send('All fields are required');
+      return res.render('signup', { message: 'All fields are required' });
     }
     if (!emailValidator.validate(email) || !isValidEmailDomain(email)) {
-      return res.status(400).send('Invalid email or domain');
+      return res.render('signup', { message: 'Invalid email or domain' });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new User({ email, username, password: hashedPassword });
@@ -79,21 +86,21 @@ app.post('/signup', async (req, res) => {
 
 // Login Page
 app.get('/login', (req, res) => {
-  res.render('login');
+  res.render('login', { message: null });
 });
 
 app.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
-      return res.status(400).send('Email and password are required');
+      return res.render('login', { message: 'Email and password are required' });
     }
     const user = await User.findOne({ email });
     if (user && await bcrypt.compare(password, user.password)) {
       req.session.user = user;
       res.redirect('/index');
     } else {
-      res.status(401).send('Invalid email or password');
+      res.render('login', { message: 'Invalid email or password' });
     }
   } catch (error) {
     console.error('Login error:', error);
@@ -103,7 +110,7 @@ app.post('/login', async (req, res) => {
 
 // Admin Signup Page
 app.get('/admin/signup', (req, res) => {
-  res.render('admin/signup');
+  res.render('admin/signup', { message: null });
 });
 
 app.post('/admin/signup', async (req, res) => {
@@ -112,7 +119,7 @@ app.post('/admin/signup', async (req, res) => {
 
     // Validate email domain
     if (!emailValidator.validate(email) || !isValidEmailDomain(email)) {
-      return res.status(400).send('Invalid email or domain');
+      return res.render('admin/signup', { message: 'Invalid email or domain' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -127,7 +134,7 @@ app.post('/admin/signup', async (req, res) => {
 
 // Admin Login Page
 app.get('/admin/login', (req, res) => {
-  res.render('admin/login');
+  res.render('admin/login', { message: null });
 });
 
 app.post('/admin/login', async (req, res) => {
@@ -138,14 +145,14 @@ app.post('/admin/login', async (req, res) => {
     const admin = await Admin.findOne({ username });
     if (!admin) {
       console.log('Admin not found');
-      return res.status(401).send('Invalid username or password');
+      return res.render('admin/login', { message: 'Invalid username or password' });
     }
 
     // Compare the password
     const isMatch = await bcrypt.compare(password, admin.password);
     if (!isMatch) {
       console.log('Password does not match');
-      return res.status(401).send('Invalid username or password');
+      return res.render('admin/login', { message: 'Invalid username or password' });
     }
 
     // Store the admin session and redirect to the dashboard
@@ -213,7 +220,42 @@ app.get('/logout', (req, res) => {
 
 // Route for forgot password
 app.get('/reset-password', (req, res) => {
-  res.render('reset-password');
+  res.render('reset-password', { message: null });
+});
+
+app.post('/reset-password', async (req, res) => {
+  try {
+    const { email, 'new-password': newPassword, 'confirm-password': confirmPassword } = req.body;
+
+    if (!emailValidator.validate(email) || !isValidEmailDomain(email)) {
+      return res.render('reset-password', { message: 'Invalid email or domain' });
+    }
+    if (newPassword !== confirmPassword) {
+      return res.render('reset-password', { message: 'Passwords do not match' });
+    }
+    if (!isValidPassword(newPassword)) {
+      return res.render('reset-password', { message: 'Password does not meet requirements' });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.render('reset-password', { message: 'User not found' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    res.redirect('/login');
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+// Root route redirecting to signup
+app.get('/', (req, res) => {
+  res.redirect('/signup');
 });
 
 // Server start
