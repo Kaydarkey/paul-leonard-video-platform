@@ -129,7 +129,7 @@ form button:hover {
   background: #555;
 }
 
-/* Video Page Styling */
+/* Video Page Styling*/ 
 .video-container {
   text-align: center;
   margin: 20px 0;
@@ -178,6 +178,7 @@ video {
 .share-button button:hover {
   background: #555;
 }
+
 
 /* Footer Styling */
 .footer {
