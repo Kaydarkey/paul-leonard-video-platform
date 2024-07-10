@@ -5,7 +5,7 @@ exports.getVideo = async (req, res) => {
   const video = await Video.findById(videoId);
   const videos = await Video.find();
   const videoIndex = videos.findIndex(v => v._id.toString() === videoId);
-  res.render('video', {
+  res.render('videos', {
     video,
     hasPrev: videoIndex > 0,
     hasNext: videoIndex < videos.length - 1,
