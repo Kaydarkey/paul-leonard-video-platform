@@ -15,10 +15,12 @@ const ensureAdmin = require('./middlewares/adminAuth');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// MongoDB Connection
 mongoose.connect('mongodb://localhost:27017/paul-leonard-video-platform')
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.log(err));
 
+// Middleware Configuration
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
 app.set('view engine', 'ejs');
@@ -191,6 +193,7 @@ app.get('/index', (req, res) => {
   }
 });
 
+
 // Video Page
 app.get('/video', async (req, res) => {
   try {
@@ -264,3 +267,4 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
+

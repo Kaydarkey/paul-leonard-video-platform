@@ -22,16 +22,16 @@
   <main>
     <div class="video-container">
       <video id="videoPlayer" controls>
-        <source src="/<%= video.video_path %>" type="video/mp4">
+        <source src="/uploads/videos/<%= video.video_path.split('/').pop() %>" type="video/mp4">
         Your browser does not support the video tag.
       </video>
       <div class="video-controls">
-        <% if (hasPrev) { %>
-          <a href="/video?index=<%= prevVideoId %>"><button>Previous</button></a>
-        <% } %>
-        <% if (hasNext) { %>
-          <a href="/video?index=<%= nextVideoId %>"><button>Next</button></a>
-        <% } %>
+        <a href="/video?index=<%= hasPrev ? prevVideoId : '' %>">
+          <button class="<%= hasPrev ? '' : 'blur' %>">Previous</button>
+        </a>
+        <a href="/video?index=<%= hasNext ? nextVideoId : '' %>">
+          <button class="<%= hasNext ? '' : 'blur' %>">Next</button>
+        </a>
       </div>
       <div class="share-button">
         <button onclick="shareVideo()">Share</button>

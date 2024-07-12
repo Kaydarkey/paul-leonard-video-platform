@@ -132,7 +132,7 @@ form button:hover {
 /* Video Page Styling*/ 
 .video-container {
   text-align: center;
-  margin: 20px 0;
+  margin: 40px 0;
   animation: fadeInUp 1s;
 }
 
@@ -162,6 +162,11 @@ video {
   background: #555;
 }
 
+.blur {
+  filter: blur(1px);
+  pointer-events: none;
+}
+
 .share-button {
   margin-top: 10px;
 }
@@ -178,6 +183,7 @@ video {
 .share-button button:hover {
   background: #555;
 }
+
 
 
 /* Footer Styling */
