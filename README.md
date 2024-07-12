@@ -8,6 +8,7 @@ Features
 - User Login: Secure login for registered users.
 - Video Navigation: Navigate between videos with next and previous buttons.
 - Admin Video Upload: Admin-only feature to upload videos with titles and descriptions.
+type "http://localhost:3001/admin/login" to access admin login
 - Password Reset: Reset password functionality for users.
 
 Installation
