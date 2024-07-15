@@ -37,7 +37,7 @@ app.use(session({
   saveUninitialized: true,
 }));
 
-// Ensure the upload directory exists
+// upload directory
 const uploadDir = path.join(__dirname, 'uploads', 'videos');
 fs.mkdirSync(uploadDir, { recursive: true });
 
