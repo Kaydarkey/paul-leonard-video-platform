@@ -30,7 +30,7 @@ body {
   background-size: contain; /* Adjust based on your logo size and aspect ratio */
   background-repeat: no-repeat;
   background-position: center; /* Center the background image */
-  height: 100px; /* Adjust height as needed */
+  height: 80px; /* Adjust height as needed */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -132,7 +132,7 @@ form button:hover {
 /* Video Page Styling*/ 
 .video-container {
   text-align: center;
-  margin: 20px 0;
+  margin: 40px 0;
   animation: fadeInUp 1s;
 }
 
@@ -162,6 +162,8 @@ video {
   background: #555;
 }
 
+
+
 .share-button {
   margin-top: 10px;
 }
@@ -178,6 +180,7 @@ video {
 .share-button button:hover {
   background: #555;
 }
+
 
 
 /* Footer Styling */
