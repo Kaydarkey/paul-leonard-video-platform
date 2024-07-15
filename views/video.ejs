@@ -15,23 +15,27 @@
           <li><a href="/video">Videos</a></li>
           <li><a href="/logout">Logout</a></li>
         </ul>
-        <img src="images/logo.png" alt="logo" style="width: 50px; height: 50px;">
+        <img src="images/logo.png" alt="logo" class="logo">
       </nav>
     </div>
   </header>
   <main>
     <div class="video-container">
       <video id="videoPlayer" controls>
-        <source src="/uploads/videos/<%= video.video_path.split('/').pop() %>" type="video/mp4">
+        <source src="/uploads/videos/ video.video_path.split('/').pop() %>" type="video/mp4">
         Your browser does not support the video tag.
       </video>
       <div class="video-controls">
-        <a href="/video?index=<%= hasPrev ? prevVideoId : '' %>">
-          <button class="<%= hasPrev ? '' : 'blur' %>">Previous</button>
-        </a>
-        <a href="/video?index=<%= hasNext ? nextVideoId : '' %>">
-          <button class="<%= hasNext ? '' : 'blur' %>">Next</button>
-        </a>
+        <% if (hasPrev) { %>
+          <a href="/video?index=<%= prevVideoId %>">
+            <button>Previous</button>
+          </a>
+        <% } %>
+        <% if (hasNext) { %>
+          <a href="/video?index=<%= nextVideoId %>">
+            <button>Next</button>
+          </a>
+        <% } %>
       </div>
       <div class="share-button">
         <button onclick="shareVideo()">Share</button>
@@ -51,5 +55,6 @@
       <p>&copy; 2024 Paul Leonard Video Platform</p>
     </div>
   </footer>
+  
 </body>
 </html>

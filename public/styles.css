@@ -30,7 +30,7 @@ body {
   background-size: contain; /* Adjust based on your logo size and aspect ratio */
   background-repeat: no-repeat;
   background-position: center; /* Center the background image */
-  height: 100px; /* Adjust height as needed */
+  height: 80px; /* Adjust height as needed */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -162,10 +162,7 @@ video {
   background: #555;
 }
 
-.blur {
-  filter: blur(1px);
-  pointer-events: none;
-}
+
 
 .share-button {
   margin-top: 10px;
