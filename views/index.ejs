@@ -1,17 +1,27 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Paul Leonard's Video Platform</title>
-  <link rel="stylesheet" href="/css/style.css">
+    <title>Paul Leonard's Video Platform</title>
+    <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <nav>
-    <ul>
-      <li><a href="/index">Home</a></li>
-      <li><a href="/videos">Videos</a></li>
-      <li><a href="/logout">Logout</a></li>
-    </ul>
-  </nav>
-  <h1>Welcome, <%= username %></h1>
+    <div class="logo">
+        <nav class="navbar">
+            <ul>
+                <li><a href="/index">Home</a></li>
+                <li><a href="/video">Videos</a></li>
+                <li><a href="/logout">Logout</a></li>
+            </ul>
+            <img src="images/logo.png" alt="logo" style="width: 50px; height: 50px;">
+        </nav>
+    </div>
+    <main class="box">
+        <h1>Welcome, <%= username %></h1>
+    </main>
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Paul Leonard Video Platform </p>
+        </div>
+    </footer>
 </body>
 </html>

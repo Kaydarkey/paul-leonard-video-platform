@@ -1,39 +1,60 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Video Page</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <nav>
-    <ul>
-      <li><a href="/index">Home</a></li>
-      <li><a href="/logout">Logout</a></li>
-    </ul>
-  </nav>
-  <h1>Video Page</h1>
-  <video controls>
-    <source src="<%= video.url %>" type="video/mp4">
-    Your browser does not support the video tag.
-  </video>
-  <div>
-    <button id="prev" <%= !hasPrev ? 'style="display:none;"' : '' %>>Previous</button>
-    <button id="next" <%= !hasNext ? 'style="display:none;"' : '' %>>Next</button>
-  </div>
-  <button onclick="shareVideo()">Share</button>
+  <header>
+    <div>
+      <nav class="navbar">
+        <ul>
+          <li><a href="/index">Home</a></li>
+          <li><a href="/video">Videos</a></li>
+          <li><a href="/logout">Logout</a></li>
+        </ul>
+        <img src="images/logo.png" alt="logo" class="logo">
+      </nav>
+    </div>
+  </header>
+  <main>
+    <div class="video-container">
+      <video id="videoPlayer" controls>
+        <source src="/uploads/videos/ video.video_path.split('/').pop() %>" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
+      <div class="video-controls">
+        <% if (hasPrev) { %>
+          <a href="/video?index=<%= prevVideoId %>">
+            <button>Previous</button>
+          </a>
+        <% } %>
+        <% if (hasNext) { %>
+          <a href="/video?index=<%= nextVideoId %>">
+            <button>Next</button>
+          </a>
+        <% } %>
+      </div>
+      <div class="share-button">
+        <button onclick="shareVideo()">Share</button>
+      </div>
+    </div>
+  </main>
   <script>
     function shareVideo() {
-      const url = window.location.href;
-      navigator.clipboard.writeText(url).then(() => {
-        alert('Video link copied to clipboard');
+      const videoURL = window.location.href;
+      navigator.clipboard.writeText(videoURL).then(() => {
+        alert('Video link copied to clipboard!');
       });
     }
-    document.getElementById('prev').addEventListener('click', () => {
-      window.location.href = '/videos?videoId=' + '<%= prevVideoId %>';
-    });
-    document.getElementById('next').addEventListener('click', () => {
-      window.location.href = '/videos?videoId=' + '<%= nextVideoId %>';
-    });
   </script>
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; 2024 Paul Leonard Video Platform</p>
+    </div>
+  </footer>
+  
 </body>
 </html>
