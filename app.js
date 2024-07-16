@@ -3,11 +3,11 @@ const express = require('express');
 const mongoose = require('mongoose');
 const session = require('express-session');
 const bodyParser = require('body-parser');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');  // Changed to bcryptjs
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const emailValidator = require('email-validator'); // email-validator
+const emailValidator = require('email-validator');
 const User = require('./models/User');
 const Admin = require('./models/Admin');
 const Video = require('./models/Video');
@@ -269,3 +269,4 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
+
