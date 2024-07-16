@@ -1,4 +1,4 @@
-//required libraries
+// Required libraries
 const express = require('express');
 const mongoose = require('mongoose');
 const session = require('express-session');
@@ -7,7 +7,7 @@ const bcrypt = require('bcrypt');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const emailValidator = require('email-validator'); //email-validator
+const emailValidator = require('email-validator'); // email-validator
 const User = require('./models/User');
 const Admin = require('./models/Admin');
 const Video = require('./models/Video');
@@ -19,10 +19,7 @@ const PORT = process.env.PORT || 3001;
 // MongoDB Connection - Atlas string
 const mongoURI = 'mongodb+srv://darkeykafui:QsaULzpw5j7hqUMr@cluster0.rsxk3ci.mongodb.net/paul-leonard-video-platform';
 
-mongoose.connect(mongoURI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+mongoose.connect(mongoURI)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
 
@@ -199,7 +196,6 @@ app.get('/index', (req, res) => {
   }
 });
 
-
 // Video Page
 app.get('/video', async (req, res) => {
   try {
@@ -273,4 +269,3 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
-
