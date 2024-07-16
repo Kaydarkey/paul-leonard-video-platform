@@ -1,70 +1,70 @@
+require('dotenv').config();
+
 // Required libraries
-const express = require('express');
-const mongoose = require('mongoose');
-const session = require('express-session');
-const bodyParser = require('body-parser');
-const bcrypt = require('bcryptjs');  // Changed to bcryptjs
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const emailValidator = require('email-validator');
-const User = require('./models/User');
-const Admin = require('./models/Admin');
-const Video = require('./models/Video');
-const ensureAdmin = require('./middlewares/adminAuth');
+import express, { static } from 'express';
+import { connect } from 'mongoose';
+import session from 'express-session';
+import { urlencoded } from 'body-parser';
+import { hash, compare } from 'bcryptjs';  // Changed to bcryptjs
+import multer, { diskStorage } from 'multer';
+import { join, extname } from 'path';
+import { mkdirSync } from 'fs';
+import { validate } from 'email-validator';
+import User, { findOne } from './models/User';
+import Admin, { findOne as _findOne } from './models/Admin';
+import Video, { find } from './models/Video';
+import ensureAdmin from './middlewares/adminAuth';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// MongoDB Connection - Atlas string
-const mongoURI = 'mongodb+srv://darkeykafui:QsaULzpw5j7hqUMr@cluster0.rsxk3ci.mongodb.net/paul-leonard-video-platform';
+// MongoDB Connection
+const mongoURI = process.env.MONGO_URI;
 
-mongoose.connect(mongoURI)
+connect(mongoURI)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
 
 // Middleware Configuration
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static('public'));
+app.use(urlencoded({ extended: true }));
+app.use(static('public'));
 app.set('view engine', 'ejs');
 
 app.use(session({
-  secret: 'secret',
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: true,
 }));
 
-// upload directory
-const uploadDir = path.join(__dirname, 'uploads', 'videos');
-fs.mkdirSync(uploadDir, { recursive: true });
+// Upload directory
+const uploadDir = join(__dirname, 'uploads', 'videos');
+mkdirSync(uploadDir, { recursive: true });
 
 // Multer storage configuration
-const storage = multer.diskStorage({
+const storage = diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
+    cb(null, Date.now() + extname(file.originalname));
   }
 });
 const upload = multer({ storage });
 
-// Helper function to validate email domain
+// Helper functions
 function isValidEmailDomain(email) {
   const validDomains = ['gmail.com', 'yahoo.com', 'outlook.com'];
   const domain = email.split('@')[1];
   return validDomains.includes(domain);
 }
 
-// Helper function to validate password
 function isValidPassword(password) {
   // Example password validation: at least 8 characters, 1 uppercase letter, 1 number
   const passwordRegex = /^(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/;
   return passwordRegex.test(password);
 }
 
-// Routes
-
+// Routes...
 // Signup Page
 app.get('/signup', (req, res) => {
   res.render('signup', { message: null });
@@ -76,10 +76,10 @@ app.post('/signup', async (req, res) => {
     if (!email || !username || !password) {
       return res.render('signup', { message: 'All fields are required' });
     }
-    if (!emailValidator.validate(email) || !isValidEmailDomain(email)) {
+    if (!validate(email) || !isValidEmailDomain(email)) {
       return res.render('signup', { message: 'Invalid email or domain' });
     }
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await hash(password, 10);
     const newUser = new User({ email, username, password: hashedPassword });
     await newUser.save();
     res.redirect('/login');
@@ -100,8 +100,8 @@ app.post('/login', async (req, res) => {
     if (!email || !password) {
       return res.render('login', { message: 'Email and password are required' });
     }
-    const user = await User.findOne({ email });
-    if (user && await bcrypt.compare(password, user.password)) {
+    const user = await findOne({ email });
+    if (user && await compare(password, user.password)) {
       req.session.user = user;
       res.redirect('/index');
     } else {
@@ -123,11 +123,11 @@ app.post('/admin/signup', async (req, res) => {
     const { email, username, password } = req.body;
 
     // Validate email domain
-    if (!emailValidator.validate(email) || !isValidEmailDomain(email)) {
+    if (!validate(email) || !isValidEmailDomain(email)) {
       return res.render('admin/signup', { message: 'Invalid email or domain' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await hash(password, 10);
     const newAdmin = new Admin({ email, username, password: hashedPassword });
     await newAdmin.save();
     res.redirect('/admin/login');
@@ -147,14 +147,14 @@ app.post('/admin/login', async (req, res) => {
     const { username, password } = req.body;
 
     // Check if the username exists
-    const admin = await Admin.findOne({ username });
+    const admin = await _findOne({ username });
     if (!admin) {
       console.log('Admin not found');
       return res.render('admin/login', { message: 'Invalid username or password' });
     }
 
     // Compare the password
-    const isMatch = await bcrypt.compare(password, admin.password);
+    const isMatch = await compare(password, admin.password);
     if (!isMatch) {
       console.log('Password does not match');
       return res.render('admin/login', { message: 'Invalid username or password' });
@@ -200,7 +200,7 @@ app.get('/index', (req, res) => {
 app.get('/video', async (req, res) => {
   try {
     if (req.session.user) {
-      const videos = await Video.find({});
+      const videos = await find({});
       const videoIndex = req.query.index ? parseInt(req.query.index) : 0;
       const video = videos[videoIndex];
       const hasPrev = videoIndex > 0;
@@ -232,7 +232,7 @@ app.post('/reset-password', async (req, res) => {
   try {
     const { email, 'new-password': newPassword, 'confirm-password': confirmPassword } = req.body;
 
-    if (!emailValidator.validate(email) || !isValidEmailDomain(email)) {
+    if (!validate(email) || !isValidEmailDomain(email)) {
       return res.render('reset-password', { message: 'Invalid email or domain' });
     }
     if (newPassword !== confirmPassword) {
@@ -242,12 +242,12 @@ app.post('/reset-password', async (req, res) => {
       return res.render('reset-password', { message: 'Password does not meet requirements' });
     }
 
-    const user = await User.findOne({ email });
+    const user = await findOne({ email });
     if (!user) {
       return res.render('reset-password', { message: 'User not found' });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await hash(newPassword, 10);
     user.password = hashedPassword;
     await user.save();
 
@@ -263,10 +263,11 @@ app.get('/', (req, res) => {
   res.redirect('/signup');
 });
 
+
 // Server start
 app.listen(PORT, () => {
   console.log(`Server started on http://localhost:${PORT}`);
 });
 
-module.exports = app;
+export default app;
 
