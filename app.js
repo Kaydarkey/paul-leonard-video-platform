@@ -4,6 +4,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const session = require('express-session');
+const MongoStore = require('connect-mongo');
 const bodyParser = require('body-parser');
 const bcrypt = require('bcryptjs');  // Changed to bcryptjs
 const multer = require('multer');
@@ -34,6 +35,11 @@ app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: true,
+  store: MongoStore.create({
+    mongoUrl: mongoURI,
+    collectionName: 'sessions'
+  }),
+  cookie: { secure: false } // Set to true if using HTTPS
 }));
 
 // Upload directory
@@ -65,6 +71,7 @@ function isValidPassword(password) {
 }
 
 // Routes...
+
 // Signup Page
 app.get('/signup', (req, res) => {
   res.render('signup', { message: null });
@@ -262,7 +269,6 @@ app.post('/reset-password', async (req, res) => {
 app.get('/', (req, res) => {
   res.redirect('/signup');
 });
-
 
 // Server start
 app.listen(PORT, () => {
