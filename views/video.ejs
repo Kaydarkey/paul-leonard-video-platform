@@ -22,7 +22,7 @@
   <main>
     <div class="video-container">
       <video id="videoPlayer" controls>
-        <source src="/uploads/videos/ video.video_path.split('/').pop() %>" type="video/mp4">
+        <source src="/uploads/videos/<%= video.video_path.split('/').pop() %>" type="video/mp4">
         Your browser does not support the video tag.
       </video>
       <div class="video-controls">
@@ -55,6 +55,5 @@
       <p>&copy; 2024 Paul Leonard Video Platform</p>
     </div>
   </footer>
-  
 </body>
 </html>
