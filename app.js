@@ -42,8 +42,11 @@ app.use(session({
   cookie: { secure: false } // Set to true if using HTTPS
 }));
 
+// Serve uploads folder
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // Upload directory
-const uploadDir = path.join(__dirname, 'uploads', 'videos');
+const uploadDir = path.join(__dirname, '../uploads/videos');
 fs.mkdirSync(uploadDir, { recursive: true });
 
 // Multer storage configuration
@@ -184,7 +187,7 @@ app.get('/admin/dashboard', ensureAdmin, (req, res) => {
 app.post('/admin/upload-video', ensureAdmin, upload.single('video'), async (req, res) => {
   try {
     const { title, description } = req.body;
-    const video_path = req.file.path;
+    const video_path = `../uploads/videos/${req.file.filename}`;  // Store the relative path
     const newVideo = new Video({ title, description, video_path });
     await newVideo.save();
     res.redirect('/admin/dashboard');
@@ -276,4 +279,3 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
-
