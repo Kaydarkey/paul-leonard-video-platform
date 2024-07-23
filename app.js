@@ -1,32 +1,26 @@
 require('dotenv').config();
-
-// Required libraries
 const express = require('express');
 const mongoose = require('mongoose');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const bodyParser = require('body-parser');
-const bcrypt = require('bcryptjs');  // Changed to bcryptjs
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const bcrypt = require('bcryptjs');
 const emailValidator = require('email-validator');
 const User = require('./models/User');
-const Admin = require('./models/Admin');
-const Video = require('./models/Video');
-const ensureAdmin = require('./middlewares/adminAuth');
+const Token = require('./models/Token');
+const Video = require('./models/Video'); 
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// MongoDB Connection
 const mongoURI = process.env.MONGO_URI;
 
 mongoose.connect(mongoURI)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
 
-// Middleware Configuration
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
 app.set('view engine', 'ejs');
@@ -39,40 +33,23 @@ app.use(session({
     mongoUrl: mongoURI,
     collectionName: 'sessions'
   }),
-  cookie: { secure: false } // Set to true if using HTTPS
+  cookie: { secure: false } // Use `true` if you have HTTPS enabled
 }));
 
-// Upload directory
-const uploadDir = path.join(__dirname, 'uploads', 'videos');
-fs.mkdirSync(uploadDir, { recursive: true });
+const isValidEmailDomain = (email) => {
+  const allowedDomains = ['example.com', 'anotherdomain.com']; // Update this with actual allowed domains
+  const domain = email.split('@')[1];
+  return allowedDomains.includes(domain);
+};
 
-// Multer storage configuration
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
+app.get('/', (req, res) => {
+  if (req.session.user) {
+    res.redirect('/index');
+  } else {
+    res.redirect('/login');
   }
 });
-const upload = multer({ storage });
 
-// Helper functions
-function isValidEmailDomain(email) {
-  const validDomains = ['gmail.com', 'yahoo.com', 'outlook.com'];
-  const domain = email.split('@')[1];
-  return validDomains.includes(domain);
-}
-
-function isValidPassword(password) {
-  // Example password validation: at least 8 characters, 1 uppercase letter, 1 number
-  const passwordRegex = /^(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/;
-  return passwordRegex.test(password);
-}
-
-// Routes...
-
-// Signup Page
 app.get('/signup', (req, res) => {
   res.render('signup', { message: null });
 });
@@ -96,7 +73,6 @@ app.post('/signup', async (req, res) => {
   }
 });
 
-// Login Page
 app.get('/login', (req, res) => {
   res.render('login', { message: null });
 });
@@ -120,90 +96,92 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Admin Signup Page
-app.get('/admin/signup', (req, res) => {
-  res.render('admin/signup', { message: null });
+app.get('/reset-password', (req, res) => {
+  res.render('reset-password', { message: null });
 });
 
-app.post('/admin/signup', async (req, res) => {
+app.post('/reset-password', async (req, res) => {
   try {
-    const { email, username, password } = req.body;
+    const { email } = req.body;
 
-    // Validate email domain
     if (!emailValidator.validate(email) || !isValidEmailDomain(email)) {
-      return res.render('admin/signup', { message: 'Invalid email or domain' });
+      return res.render('reset-password', { message: 'Invalid email or domain' });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.render('reset-password', { message: 'No account found with that email' });
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const tokenDoc = new Token({ userId: user._id, token });
+    await tokenDoc.save();
+
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: user.email,
+      subject: 'Password Reset',
+      text: `Please reset your password by clicking the link: http://${req.headers.host}/reset-password/${token}`
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error('Email send error:', error);
+        return res.status(500).send('Error sending email');
+      }
+      res.render('reset-password', { message: 'Password reset link sent to your email' });
+    });
+
+  } catch (error) {
+    console.error('Password reset error:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+app.get('/reset-password/:token', async (req, res) => {
+  const { token } = req.params;
+
+  try {
+    const tokenDoc = await Token.findOne({ token });
+    if (!tokenDoc) {
+      return res.status(400).send('Invalid or expired token');
+    }
+
+    res.render('reset-password-form', { userId: tokenDoc.userId, token });
+  } catch (error) {
+    console.error('Token verification error:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+app.post('/reset-password-form', async (req, res) => {
+  const { userId, token, password } = req.body;
+
+  try {
+    const tokenDoc = await Token.findOne({ userId, token });
+    if (!tokenDoc) {
+      return res.status(400).send('Invalid or expired token');
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newAdmin = new Admin({ email, username, password: hashedPassword });
-    await newAdmin.save();
-    res.redirect('/admin/login');
-  } catch (error) {
-    console.error('Admin signup error:', error);
-    res.status(500).send('Internal server error');
-  }
-});
+    await User.findByIdAndUpdate(userId, { password: hashedPassword });
+    await Token.findByIdAndDelete(tokenDoc._id);
 
-// Admin Login Page
-app.get('/admin/login', (req, res) => {
-  res.render('admin/login', { message: null });
-});
-
-app.post('/admin/login', async (req, res) => {
-  try {
-    const { username, password } = req.body;
-
-    // Check if the username exists
-    const admin = await Admin.findOne({ username });
-    if (!admin) {
-      console.log('Admin not found');
-      return res.render('admin/login', { message: 'Invalid username or password' });
-    }
-
-    // Compare the password
-    const isMatch = await bcrypt.compare(password, admin.password);
-    if (!isMatch) {
-      console.log('Password does not match');
-      return res.render('admin/login', { message: 'Invalid username or password' });
-    }
-
-    // Store the admin session and redirect to the dashboard
-    req.session.admin = admin;
-    res.redirect('/admin/dashboard');
-  } catch (error) {
-    console.error('Admin login error:', error);
-    res.status(500).send('Internal server error');
-  }
-});
-
-// Admin Dashboard
-app.get('/admin/dashboard', ensureAdmin, (req, res) => {
-  res.render('admin/dashboard');
-});
-
-app.post('/admin/upload-video', ensureAdmin, upload.single('video'), async (req, res) => {
-  try {
-    const { title, description } = req.body;
-    const video_path = req.file.path;
-    const newVideo = new Video({ title, description, video_path });
-    await newVideo.save();
-    res.redirect('/admin/dashboard');
-  } catch (error) {
-    console.error('Video upload error:', error);
-    res.status(500).send('Internal server error');
-  }
-});
-
-// Index Page
-app.get('/index', (req, res) => {
-  if (req.session.user) {
-    res.render('index', { username: req.session.user.username });
-  } else {
     res.redirect('/login');
+  } catch (error) {
+    console.error('Password reset form error:', error);
+    res.status(500).send('Internal server error');
   }
 });
 
-// Video Page
 app.get('/video', async (req, res) => {
   try {
     if (req.session.user) {
@@ -224,55 +202,27 @@ app.get('/video', async (req, res) => {
   }
 });
 
-// Logout
-app.get('/logout', (req, res) => {
-  req.session.destroy();
-  res.redirect('/login');
-});
-
-// Route for forgot password
-app.get('/reset-password', (req, res) => {
-  res.render('reset-password', { message: null });
-});
-
-app.post('/reset-password', async (req, res) => {
-  try {
-    const { email, 'new-password': newPassword, 'confirm-password': confirmPassword } = req.body;
-
-    if (!emailValidator.validate(email) || !isValidEmailDomain(email)) {
-      return res.render('reset-password', { message: 'Invalid email or domain' });
-    }
-    if (newPassword !== confirmPassword) {
-      return res.render('reset-password', { message: 'Passwords do not match' });
-    }
-    if (!isValidPassword(newPassword)) {
-      return res.render('reset-password', { message: 'Password does not meet requirements' });
-    }
-
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.render('reset-password', { message: 'User not found' });
-    }
-
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    user.password = hashedPassword;
-    await user.save();
-
+app.get('/index', (req, res) => {
+  if (req.session.user) {
+    res.render('index', { username: req.session.user.username });
+  } else {
     res.redirect('/login');
-  } catch (error) {
-    console.error('Reset password error:', error);
-    res.status(500).send('Internal server error');
   }
 });
 
-// Root route redirecting to signup
-app.get('/', (req, res) => {
-  res.redirect('/signup');
+app.get('/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).send('Failed to logout');
+    }
+    res.redirect('/login');
+  });
 });
 
-// Server start
+app.use((req, res, next) => {
+  res.status(404).send('Page not found');
+});
+
 app.listen(PORT, () => {
-  console.log(`Server started on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
-
-module.exports = app;
