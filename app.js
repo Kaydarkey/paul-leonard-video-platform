@@ -24,7 +24,9 @@ const PORT = process.env.PORT || 3001;
 // MongoDB Connection
 const mongoURI = process.env.MONGO_URI;
 
-mongoose.connect(mongoURI)
+mongoose.connect(mongoURI, {
+  
+})
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
 
@@ -272,11 +274,11 @@ app.post('/reset-password', async (req, res) => {
       to: email,
       from: process.env.EMAIL_USER,
       subject: 'Password Reset Request',
-      text: `You are receiving this because you (or someone else) have requested the reset of the password for your account.\n\nPlease click on the following link, or paste it into your browser to complete the process:\n\n${resetUrl}\n\nIf you did not request this, please ignore this email and your password will remain unchanged.\n`
+      text: `You are receiving this because you (or someone else) have requested the reset of the password for your account.\n\nPlease click on the following link, or paste this into your browser to complete the process:\n\n${resetUrl}\n\nIf you did not request this, please ignore this email and your password will remain unchanged.\n`
     };
 
     await transporter.sendMail(mailOptions);
-    res.render('reset-password', { message: 'An email has been sent to ' + email + ' with further instructions.' });
+    res.render('reset-password', { message: 'An email has been sent to reset your password' });
   } catch (error) {
     console.error('Reset password error:', error);
     res.status(500).send('Internal server error');
@@ -285,15 +287,10 @@ app.post('/reset-password', async (req, res) => {
 
 app.get('/reset-password/:token', async (req, res) => {
   try {
-    const user = await User.findOne({
-      resetPasswordToken: req.params.token,
-      resetPasswordExpires: { $gt: Date.now() }
-    });
-
+    const user = await User.findOne({ resetPasswordToken: req.params.token, resetPasswordExpires: { $gt: Date.now() } });
     if (!user) {
-      return res.render('reset-password', { message: 'Password reset token is invalid or has expired.' });
+      return res.render('reset-password', { message: 'Password reset token is invalid or has expired' });
     }
-
     res.render('reset-password-form', { token: req.params.token });
   } catch (error) {
     console.error('Reset password token error:', error);
@@ -303,36 +300,28 @@ app.get('/reset-password/:token', async (req, res) => {
 
 app.post('/reset-password/:token', async (req, res) => {
   try {
-    const { password } = req.body;
-
-    if (!isValidPassword(password)) {
-      return res.render('reset-password-form', { message: 'Invalid password format.', token: req.params.token });
+    const user = await User.findOne({ resetPasswordToken: req.params.token, resetPasswordExpires: { $gt: Date.now() } });
+    if (!user) {
+      return res.render('reset-password-form', { message: 'Password reset token is invalid or has expired', token: req.params.token });
     }
 
-    const user = await User.findOne({
-      resetPasswordToken: req.params.token,
-      resetPasswordExpires: { $gt: Date.now() }
-    });
-
-    if (!user) {
-      return res.render('reset-password', { message: 'Password reset token is invalid or has expired.' });
+    const { password } = req.body;
+    if (!isValidPassword(password)) {
+      return res.render('reset-password-form', { message: 'Password must contain at least one uppercase letter, one symbol, and one digit', token: req.params.token });
     }
 
     user.password = await bcrypt.hash(password, 10);
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
     await user.save();
-
     res.redirect('/login');
   } catch (error) {
-    console.error('Reset password post error:', error);
+    console.error('Reset password form error:', error);
     res.status(500).send('Internal server error');
   }
 });
 
-// Server start
+// Starting the server
 app.listen(PORT, () => {
   console.log(`Server started on http://localhost:${PORT}`);
 });
-
-
