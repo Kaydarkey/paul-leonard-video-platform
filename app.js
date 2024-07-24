@@ -289,14 +289,15 @@ app.get('/reset-password/:token', async (req, res) => {
   try {
     const user = await User.findOne({ resetPasswordToken: req.params.token, resetPasswordExpires: { $gt: Date.now() } });
     if (!user) {
-      return res.render('reset-password', { message: 'Password reset token is invalid or has expired' });
+      return res.render('reset-password-form', { message: 'Password reset token is invalid or has expired', token: req.params.token });
     }
-    res.render('reset-password-form', { token: req.params.token });
+    res.render('reset-password-form', { token: req.params.token, message: null });
   } catch (error) {
     console.error('Reset password token error:', error);
     res.status(500).send('Internal server error');
   }
 });
+
 
 app.post('/reset-password/:token', async (req, res) => {
   try {
@@ -320,6 +321,7 @@ app.post('/reset-password/:token', async (req, res) => {
     res.status(500).send('Internal server error');
   }
 });
+
 
 // Starting the server
 app.listen(PORT, () => {
