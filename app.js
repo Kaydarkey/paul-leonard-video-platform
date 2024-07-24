@@ -1,13 +1,18 @@
-//required libraries
+require('dotenv').config();
+
+// Required libraries
 const express = require('express');
 const mongoose = require('mongoose');
 const session = require('express-session');
+const MongoStore = require('connect-mongo');
 const bodyParser = require('body-parser');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const emailValidator = require('email-validator'); //email-validator
+const emailValidator = require('email-validator');
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 const User = require('./models/User');
 const Admin = require('./models/Admin');
 const Video = require('./models/Video');
@@ -16,13 +21,10 @@ const ensureAdmin = require('./middlewares/adminAuth');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// MongoDB Connection - Atlas string
-const mongoURI = 'mongodb+srv://darkeykafui:QsaULzpw5j7hqUMr@cluster0.rsxk3ci.mongodb.net/paul-leonard-video-platform';
+// MongoDB Connection
+const mongoURI = process.env.MONGO_URI;
 
-mongoose.connect(mongoURI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+mongoose.connect(mongoURI)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
 
@@ -32,12 +34,17 @@ app.use(express.static('public'));
 app.set('view engine', 'ejs');
 
 app.use(session({
-  secret: 'secret',
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: true,
+  store: MongoStore.create({
+    mongoUrl: mongoURI,
+    collectionName: 'sessions'
+  }),
+  cookie: { secure: false } // Set to true if using HTTPS
 }));
 
-// upload directory
+// Upload directory
 const uploadDir = path.join(__dirname, 'uploads', 'videos');
 fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -52,21 +59,37 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Helper function to validate email domain
+// Helper functions
 function isValidEmailDomain(email) {
   const validDomains = ['gmail.com', 'yahoo.com', 'outlook.com'];
   const domain = email.split('@')[1];
   return validDomains.includes(domain);
 }
 
-// Helper function to validate password
 function isValidPassword(password) {
-  // Example password validation: at least 8 characters, 1 uppercase letter, 1 number
-  const passwordRegex = /^(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/;
-  return passwordRegex.test(password);
+  // The password should have at least one uppercase letter, one symbol, and one digit
+  return /^(?=.*[A-Z])(?=.*[!@#$%^&*])(?=.*\d).{8,}$/.test(password);
 }
 
-// Routes
+// Setup Nodemailer
+const transporter = nodemailer.createTransport({
+  service: 'Gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
+
+// Routes and Route Handlers
+
+// Home Page Route
+app.get('/', (req, res) => {
+  if (req.session.user) {
+    res.redirect('/index');
+  } else {
+    res.redirect('/signup');
+  }
+});
 
 // Signup Page
 app.get('/signup', (req, res) => {
@@ -125,7 +148,6 @@ app.post('/admin/signup', async (req, res) => {
   try {
     const { email, username, password } = req.body;
 
-    // Validate email domain
     if (!emailValidator.validate(email) || !isValidEmailDomain(email)) {
       return res.render('admin/signup', { message: 'Invalid email or domain' });
     }
@@ -149,21 +171,16 @@ app.post('/admin/login', async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // Check if the username exists
     const admin = await Admin.findOne({ username });
     if (!admin) {
-      console.log('Admin not found');
       return res.render('admin/login', { message: 'Invalid username or password' });
     }
 
-    // Compare the password
     const isMatch = await bcrypt.compare(password, admin.password);
     if (!isMatch) {
-      console.log('Password does not match');
       return res.render('admin/login', { message: 'Invalid username or password' });
     }
 
-    // Store the admin session and redirect to the dashboard
     req.session.admin = admin;
     res.redirect('/admin/dashboard');
   } catch (error) {
@@ -199,7 +216,6 @@ app.get('/index', (req, res) => {
   }
 });
 
-
 // Video Page
 app.get('/video', async (req, res) => {
   try {
@@ -234,16 +250,10 @@ app.get('/reset-password', (req, res) => {
 
 app.post('/reset-password', async (req, res) => {
   try {
-    const { email, 'new-password': newPassword, 'confirm-password': confirmPassword } = req.body;
+    const { email } = req.body;
 
     if (!emailValidator.validate(email) || !isValidEmailDomain(email)) {
       return res.render('reset-password', { message: 'Invalid email or domain' });
-    }
-    if (newPassword !== confirmPassword) {
-      return res.render('reset-password', { message: 'Passwords do not match' });
-    }
-    if (!isValidPassword(newPassword)) {
-      return res.render('reset-password', { message: 'Password does not meet requirements' });
     }
 
     const user = await User.findOne({ email });
@@ -251,20 +261,73 @@ app.post('/reset-password', async (req, res) => {
       return res.render('reset-password', { message: 'User not found' });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    user.password = hashedPassword;
+    // Generate password reset token
+    const token = crypto.randomBytes(20).toString('hex');
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = Date.now() + 600000; // 10 minutes
     await user.save();
 
-    res.redirect('/login');
+    const resetUrl = `http://${req.headers.host}/reset-password/${token}`;
+    const mailOptions = {
+      to: email,
+      from: process.env.EMAIL_USER,
+      subject: 'Password Reset Request',
+      text: `You are receiving this because you (or someone else) have requested the reset of the password for your account.\n\nPlease click on the following link, or paste this into your browser to complete the process:\n\n${resetUrl}\n\nIf you did not request this, please ignore this email and your password will remain unchanged.`
+    };
+
+    await transporter.sendMail(mailOptions);
+    res.render('reset-password', { message: 'A password reset link has been sent to your email' });
   } catch (error) {
-    console.error('Reset password error:', error);
+    console.error('Password reset error:', error);
     res.status(500).send('Internal server error');
   }
 });
 
-// Root route redirecting to signup
-app.get('/', (req, res) => {
-  res.redirect('/signup');
+// Route for reset password form
+app.get('/reset-password/:token', async (req, res) => {
+  try {
+    const user = await User.findOne({
+      resetPasswordToken: req.params.token,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.redirect('/reset-password');
+    }
+
+    res.render('reset-password-form', { token: req.params.token, message: null });
+  } catch (error) {
+    console.error('Reset password form error:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+app.post('/reset-password/:token', async (req, res) => {
+  try {
+    const { password } = req.body;
+    const user = await User.findOne({
+      resetPasswordToken: req.params.token,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.render('reset-password-form', { token: req.params.token, message: 'Password reset token is invalid or has expired' });
+    }
+
+    if (!isValidPassword(password)) {
+      return res.render('reset-password-form', { token: req.params.token, message: 'Password must be at least 8 characters long and include one uppercase letter, one symbol, and one digit' });
+    }
+
+    user.password = await bcrypt.hash(password, 10);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    res.redirect('/login');
+  } catch (error) {
+    console.error('Password reset error:', error);
+    res.status(500).send('Internal server error');
+  }
 });
 
 // Server start
@@ -272,4 +335,4 @@ app.listen(process.env.PORT, () => {
   console.log(`Server started on http://localhost:${PORT}`);
 });
 
-module.exports = app;
+
