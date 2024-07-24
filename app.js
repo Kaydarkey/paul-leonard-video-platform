@@ -41,7 +41,7 @@ app.use(session({
     mongoUrl: mongoURI,
     collectionName: 'sessions'
   }),
-  cookie: { secure: process.env.NODE_ENV === 'production' } // Set to true if using HTTPS in production
+  cookie: { secure: false } // Set to true if using HTTPS
 }));
 
 // Upload directory
@@ -67,16 +67,27 @@ function isValidEmailDomain(email) {
 }
 
 function isValidPassword(password) {
-  const passwordRegex = /^(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/;
-  return passwordRegex.test(password);
+  // The password should have at least one uppercase letter, one symbol, and one digit
+  return /^(?=.*[A-Z])(?=.*[!@#$%^&*])(?=.*\d).{8,}$/.test(password);
 }
 
 // Setup Nodemailer
 const transporter = nodemailer.createTransport({
-  service: 'Gmail', // Use your email service provider
+  service: 'Gmail',
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
+  }
+});
+
+// Routes and Route Handlers
+
+// Home Page Route
+app.get('/', (req, res) => {
+  if (req.session.user) {
+    res.redirect('/index');
+  } else {
+    res.redirect('/signup');
   }
 });
 
@@ -261,48 +272,39 @@ app.post('/reset-password', async (req, res) => {
       to: email,
       from: process.env.EMAIL_USER,
       subject: 'Password Reset Request',
-      text: `You are receiving this because you (or someone else) have requested to reset the password for your account.\n\n
-      Please click on the following link, or paste this into your browser, to complete the process:\n\n
-      ${resetUrl}\n\n
-      If you did not request this, please ignore this email and your password will remain unchanged.\n`
+      text: `You are receiving this because you (or someone else) have requested the reset of the password for your account.\n\nPlease click on the following link, or paste this into your browser to complete the process:\n\n${resetUrl}\n\nIf you did not request this, please ignore this email and your password will remain unchanged.`
     };
 
     await transporter.sendMail(mailOptions);
-    res.render('reset-password', { message: 'Password reset email sent' });
+    res.render('reset-password', { message: 'A password reset link has been sent to your email' });
   } catch (error) {
     console.error('Password reset error:', error);
     res.status(500).send('Internal server error');
   }
 });
 
-// Route to verify token and reset password
+// Route for reset password form
 app.get('/reset-password/:token', async (req, res) => {
   try {
     const user = await User.findOne({
       resetPasswordToken: req.params.token,
       resetPasswordExpires: { $gt: Date.now() }
     });
+
     if (!user) {
-      return res.render('reset-password', { message: 'Password reset token is invalid or has expired' });
+      return res.redirect('/reset-password');
     }
-    res.render('reset-password-form', { token: req.params.token });
+
+    res.render('reset-password-form', { token: req.params.token, message: null });
   } catch (error) {
-    console.error('Token verification error:', error);
+    console.error('Reset password form error:', error);
     res.status(500).send('Internal server error');
   }
 });
 
 app.post('/reset-password/:token', async (req, res) => {
   try {
-    const { password, confirmPassword } = req.body;
-
-    if (password !== confirmPassword) {
-      return res.render('reset-password-form', { token: req.params.token, message: 'Passwords do not match' });
-    }
-    if (!isValidPassword(password)) {
-      return res.render('reset-password-form', { token: req.params.token, message: 'Password does not meet requirements' });
-    }
-
+    const { password } = req.body;
     const user = await User.findOne({
       resetPasswordToken: req.params.token,
       resetPasswordExpires: { $gt: Date.now() }
@@ -312,25 +314,24 @@ app.post('/reset-password/:token', async (req, res) => {
       return res.render('reset-password-form', { token: req.params.token, message: 'Password reset token is invalid or has expired' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    user.password = hashedPassword;
+    if (!isValidPassword(password)) {
+      return res.render('reset-password-form', { token: req.params.token, message: 'Password must be at least 8 characters long and include one uppercase letter, one symbol, and one digit' });
+    }
+
+    user.password = await bcrypt.hash(password, 10);
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
     await user.save();
 
     res.redirect('/login');
   } catch (error) {
-    console.error('Password update error:', error);
+    console.error('Password reset error:', error);
     res.status(500).send('Internal server error');
   }
-});
-
-// Root route redirecting to signup
-app.get('/', (req, res) => {
-  res.redirect('/signup');
 });
 
 // Server start
 app.listen(PORT, () => {
   console.log(`Server started on http://localhost:${PORT}`);
 });
+
