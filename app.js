@@ -334,4 +334,3 @@ app.post('/reset-password/:token', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server started on http://localhost:${PORT}`);
 });
-
