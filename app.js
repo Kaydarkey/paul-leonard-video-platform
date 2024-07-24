@@ -331,7 +331,8 @@ app.post('/reset-password/:token', async (req, res) => {
 });
 
 // Server start
-app.listen(PORT, () => {
+app.listen(process.env.PORT, () => {
   console.log(`Server started on http://localhost:${PORT}`);
 });
+
 
