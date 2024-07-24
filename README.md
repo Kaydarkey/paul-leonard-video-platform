@@ -29,7 +29,7 @@ Installation
    node app.js
    ```
 
-4. Open your browser and navigate to `http://localhost:3000`
+4. Open your browser and navigate to `http://localhost:3001` but once deployed you can use the deployed link
 
 Contributing
 
