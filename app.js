@@ -272,18 +272,17 @@ app.post('/reset-password', async (req, res) => {
       to: email,
       from: process.env.EMAIL_USER,
       subject: 'Password Reset Request',
-      text: `You are receiving this because you (or someone else) have requested the reset of the password for your account.\n\nPlease click on the following link, or paste this into your browser to complete the process:\n\n${resetUrl}\n\nIf you did not request this, please ignore this email and your password will remain unchanged.`
+      text: `You are receiving this because you (or someone else) have requested the reset of the password for your account.\n\nPlease click on the following link, or paste it into your browser to complete the process:\n\n${resetUrl}\n\nIf you did not request this, please ignore this email and your password will remain unchanged.\n`
     };
 
     await transporter.sendMail(mailOptions);
-    res.render('reset-password', { message: 'A password reset link has been sent to your email' });
+    res.render('reset-password', { message: 'An email has been sent to ' + email + ' with further instructions.' });
   } catch (error) {
-    console.error('Password reset error:', error);
+    console.error('Reset password error:', error);
     res.status(500).send('Internal server error');
   }
 });
 
-// Route for reset password form
 app.get('/reset-password/:token', async (req, res) => {
   try {
     const user = await User.findOne({
@@ -292,12 +291,12 @@ app.get('/reset-password/:token', async (req, res) => {
     });
 
     if (!user) {
-      return res.redirect('/reset-password');
+      return res.render('reset-password', { message: 'Password reset token is invalid or has expired.' });
     }
 
-    res.render('reset-password-form', { token: req.params.token, message: null });
+    res.render('reset-password-form', { token: req.params.token });
   } catch (error) {
-    console.error('Reset password form error:', error);
+    console.error('Reset password token error:', error);
     res.status(500).send('Internal server error');
   }
 });
@@ -305,17 +304,18 @@ app.get('/reset-password/:token', async (req, res) => {
 app.post('/reset-password/:token', async (req, res) => {
   try {
     const { password } = req.body;
+
+    if (!isValidPassword(password)) {
+      return res.render('reset-password-form', { message: 'Invalid password format.', token: req.params.token });
+    }
+
     const user = await User.findOne({
       resetPasswordToken: req.params.token,
       resetPasswordExpires: { $gt: Date.now() }
     });
 
     if (!user) {
-      return res.render('reset-password-form', { token: req.params.token, message: 'Password reset token is invalid or has expired' });
-    }
-
-    if (!isValidPassword(password)) {
-      return res.render('reset-password-form', { token: req.params.token, message: 'Password must be at least 8 characters long and include one uppercase letter, one symbol, and one digit' });
+      return res.render('reset-password', { message: 'Password reset token is invalid or has expired.' });
     }
 
     user.password = await bcrypt.hash(password, 10);
@@ -325,13 +325,13 @@ app.post('/reset-password/:token', async (req, res) => {
 
     res.redirect('/login');
   } catch (error) {
-    console.error('Password reset error:', error);
+    console.error('Reset password post error:', error);
     res.status(500).send('Internal server error');
   }
 });
 
 // Server start
-app.listen(process.env.PORT, () => {
+app.listen(PORT, () => {
   console.log(`Server started on http://localhost:${PORT}`);
 });
 
