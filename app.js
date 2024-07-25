@@ -44,7 +44,7 @@ app.use(session({
     mongoUrl: process.env.MONGO_URI,
     collectionName: 'sessions'
   }),
-  cookie: { secure: true } 
+  cookie: { secure: true }
 }));
 
 // Upload directory
@@ -287,8 +287,10 @@ app.get('/admin/login', (req, res) => {
 
 app.post('/admin/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
-
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.render('admin/login', { message: 'Email and password are required' });
+    }
     const admin = await Admin.findOne({ username });
     if (!admin) {
       return res.render('admin/login', { message: 'Invalid username or password' });
