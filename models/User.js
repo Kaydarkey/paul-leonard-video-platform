@@ -29,7 +29,13 @@ const userSchema = new mongoose.Schema({
     }
   },
   resetPasswordToken: String,
-  resetPasswordExpires: Date
+  resetPasswordExpires: Date,
+  activationToken: String,
+  activationExpires: Date,
+  isActive: {
+    type: Boolean,
+    default: false
+  }
 });
 
 module.exports = mongoose.model('User', userSchema);
