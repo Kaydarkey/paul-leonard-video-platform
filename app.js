@@ -40,7 +40,7 @@ app.use(session({
   resave: false,
   saveUninitialized: true,
   store: MongoStore.create({
-    mongoUrl: mongoURI,
+    mongoUrl: process.env.MONGO_URI,
     collectionName: 'sessions'
   }),
   cookie: { secure: false } // Set to true if using HTTPS
@@ -270,58 +270,75 @@ app.post('/reset-password', async (req, res) => {
     await user.save();
 
     const resetUrl = `http://${req.headers.host}/reset-password/${token}`;
+
+    // Send email
     const mailOptions = {
-      to: email,
+      to: user.email,
       from: process.env.EMAIL_USER,
-      subject: 'Password Reset Request',
-      text: `You are receiving this because you (or someone else) have requested the reset of the password for your account.\n\nPlease click on the following link, or paste this into your browser to complete the process:\n\n${resetUrl}\n\nIf you did not request this, please ignore this email and your password will remain unchanged.\n`
+      subject: 'Password Reset',
+      text: `You are receiving this because you (or someone else) have requested the reset of the password for your account.\n\n
+      Please click on the following link, or paste this into your browser to complete the process:\n\n
+      ${resetUrl}\n\n
+      If you did not request this, please ignore this email and your password will remain unchanged.\n`
     };
 
     await transporter.sendMail(mailOptions);
-    res.render('reset-password', { message: 'An email has been sent to reset your password' });
+
+    res.render('reset-password', { message: 'An email has been sent to ' + user.email + ' with further instructions.' });
   } catch (error) {
     console.error('Reset password error:', error);
     res.status(500).send('Internal server error');
   }
 });
 
+// Route for reset password form
 app.get('/reset-password/:token', async (req, res) => {
   try {
-    const user = await User.findOne({ resetPasswordToken: req.params.token, resetPasswordExpires: { $gt: Date.now() } });
+    const user = await User.findOne({ 
+      resetPasswordToken: req.params.token,
+      resetPasswordExpires: { $gt: Date.now() } 
+    });
+
     if (!user) {
-      return res.render('reset-password-form', { message: 'Password reset token is invalid or has expired', token: req.params.token });
+      return res.render('reset-password', { message: 'Password reset token is invalid or has expired.' });
     }
+
     res.render('reset-password-form', { token: req.params.token, message: null });
-  } catch (error) {
-    console.error('Reset password token error:', error);
-    res.status(500).send('Internal server error');
-  }
-});
-
-
-app.post('/reset-password/:token', async (req, res) => {
-  try {
-    const user = await User.findOne({ resetPasswordToken: req.params.token, resetPasswordExpires: { $gt: Date.now() } });
-    if (!user) {
-      return res.render('reset-password-form', { message: 'Password reset token is invalid or has expired', token: req.params.token });
-    }
-
-    const { password } = req.body;
-    if (!isValidPassword(password)) {
-      return res.render('reset-password-form', { message: 'Password must contain at least one uppercase letter, one symbol, and one digit', token: req.params.token });
-    }
-
-    user.password = await bcrypt.hash(password, 10);
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpires = undefined;
-    await user.save();
-    res.redirect('/login');
   } catch (error) {
     console.error('Reset password form error:', error);
     res.status(500).send('Internal server error');
   }
 });
 
+// Route for updating the password
+app.post('/reset-password/:token', async (req, res) => {
+  try {
+    const user = await User.findOne({
+      resetPasswordToken: req.params.token,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.render('reset-password', { message: 'Password reset token is invalid or has expired.' });
+    }
+
+    const { password } = req.body;
+
+    if (!isValidPassword(password)) {
+      return res.render('reset-password-form', { token: req.params.token, message: 'Invalid password format.' });
+    }
+
+    user.password = await bcrypt.hash(password, 10);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    res.redirect('/login');
+  } catch (error) {
+    console.error('Update password error:', error);
+    res.status(500).send('Internal server error');
+  }
+});
 
 // Starting the server
 app.listen(PORT, () => {
