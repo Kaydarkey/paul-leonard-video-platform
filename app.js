@@ -25,7 +25,8 @@ const PORT = process.env.PORT || 3001;
 const mongoURI = process.env.MONGO_URI;
 
 mongoose.connect(mongoURI, {
-  
+  useNewUrlParser: true,
+  useUnifiedTopology: true
 })
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
@@ -108,11 +109,67 @@ app.post('/signup', async (req, res) => {
       return res.render('signup', { message: 'Invalid email or domain' });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({ email, username, password: hashedPassword });
+    
+    // Generate activation token
+    const activationToken = crypto.randomBytes(20).toString('hex');
+    const activationExpires = Date.now() + 600000; // 10 minutes
+
+    // Log token creation time and expiration time for debugging
+    console.log('Token created at:', Date.now());
+    console.log('Token expires at:', activationExpires);
+
+    const newUser = new User({
+      email,
+      username,
+      password: hashedPassword,
+      activationToken,
+      activationExpires,
+      isActive: false
+    });
+
     await newUser.save();
-    res.redirect('/login');
+
+    const activationUrl = `http://${req.headers.host}/activate/${activationToken}`;
+
+    // Send activation email
+    const mailOptions = {
+      to: newUser.email,
+      from: process.env.EMAIL_USER,
+      subject: 'Account Activation',
+      text: `Please click on the following link, or paste this into your browser to activate your account:\n\n
+      ${activationUrl}\n\n
+      If you did not request this, please ignore this email.\n`
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.render('signup', { message: 'An activation email has been sent to your email address. Please check your inbox.' });
   } catch (error) {
     console.error('Signup error:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+// Activate User Account
+app.get('/activate/:token', async (req, res) => {
+  try {
+    const user = await User.findOne({
+      activationToken: req.params.token,
+      activationExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.render('activation', { message: 'Activation token is invalid or has expired.' });
+    }
+
+    user.isActive = true;
+    user.activationToken = undefined;
+    user.activationExpires = undefined;
+    await user.save();
+
+    res.redirect('/login');
+  } catch (error) {
+    console.error('Activation error:', error);
     res.status(500).send('Internal server error');
   }
 });
@@ -130,6 +187,9 @@ app.post('/login', async (req, res) => {
     }
     const user = await User.findOne({ email });
     if (user && await bcrypt.compare(password, user.password)) {
+      if (!user.isActive) {
+        return res.render('login', { message: 'Account is not activated. Please check your email for the activation link.' });
+      }
       req.session.user = user;
       res.redirect('/index');
     } else {
@@ -155,11 +215,67 @@ app.post('/admin/signup', async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newAdmin = new Admin({ email, username, password: hashedPassword });
+    
+    // Generate activation token
+    const activationToken = crypto.randomBytes(20).toString('hex');
+    const activationExpires = Date.now() + 600000; // 10 minutes
+
+    // Log token creation time and expiration time for debugging
+    console.log('Token created at:', Date.now());
+    console.log('Token expires at:', activationExpires);
+
+    const newAdmin = new Admin({
+      email,
+      username,
+      password: hashedPassword,
+      activationToken,
+      activationExpires,
+      isActive: false
+    });
+
     await newAdmin.save();
+
+    const activationUrl = `http://${req.headers.host}/admin/activate/${activationToken}`;
+
+    // Send activation email
+    const mailOptions = {
+      to: newAdmin.email,
+      from: process.env.EMAIL_USER,
+      subject: 'Account Activation',
+      text: `Please click on the following link, or paste this into your browser to activate your account:\n\n
+      ${activationUrl}\n\n
+      If you did not request this, please ignore this email.\n`
+    };
+
+    await transporter.sendMail(mailOptions);
+
     res.redirect('/admin/login');
   } catch (error) {
     console.error('Admin signup error:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+// Activate Admin Account
+app.get('/admin/activate/:token', async (req, res) => {
+  try {
+    const admin = await Admin.findOne({
+      activationToken: req.params.token,
+      activationExpires: { $gt: Date.now() }
+    });
+
+    if (!admin) {
+      return res.render('admin/activation', { message: 'Activation token is invalid or has expired.' });
+    }
+
+    admin.isActive = true;
+    admin.activationToken = undefined;
+    admin.activationExpires = undefined;
+    await admin.save();
+
+    res.redirect('/admin/login');
+  } catch (error) {
+    console.error('Admin activation error:', error);
     res.status(500).send('Internal server error');
   }
 });
