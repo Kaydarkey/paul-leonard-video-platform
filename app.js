@@ -43,7 +43,7 @@ app.use(session({
     mongoUrl: process.env.MONGO_URI,
     collectionName: 'sessions'
   }),
-  cookie: { secure: false } // Set to true if using HTTPS
+  cookie: { secure: true } 
 }));
 
 // Upload directory
