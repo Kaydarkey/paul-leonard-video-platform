@@ -44,7 +44,7 @@ app.use(session({
     mongoUrl: process.env.MONGO_URI,
     collectionName: 'sessions'
   }),
-  cookie: { secure: true }
+  cookie: { secure: false } // Change to true in production with HTTPS
 }));
 
 // Upload directory
@@ -113,10 +113,6 @@ app.post('/signup', async (req, res) => {
     // Generate activation token
     const activationToken = crypto.randomBytes(20).toString('hex');
     const activationExpires = Date.now() + 600000; // 10 minutes
-
-    // Log token creation time and expiration time for debugging
-    console.log('Token created at:', Date.now());
-    console.log('Token expires at:', activationExpires);
 
     const newUser = new User({
       email,
@@ -220,10 +216,6 @@ app.post('/admin/signup', async (req, res) => {
     const activationToken = crypto.randomBytes(20).toString('hex');
     const activationExpires = Date.now() + 600000; // 10 minutes
 
-    // Log token creation time and expiration time for debugging
-    console.log('Token created at:', Date.now());
-    console.log('Token expires at:', activationExpires);
-
     const newAdmin = new Admin({
       email,
       username,
@@ -288,38 +280,42 @@ app.get('/admin/login', (req, res) => {
 app.post('/admin/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) {
-      return res.render('admin/login', { message: 'Email and password are required' });
-    }
-    const admin = await Admin.findOne({ username });
-    if (!admin) {
-      return res.render('admin/login', { message: 'Invalid username or password' });
-    }
+    const admin = await Admin.findOne({ email });
 
-    const isMatch = await bcrypt.compare(password, admin.password);
-    if (!isMatch) {
-      return res.render('admin/login', { message: 'Invalid username or password' });
+    if (admin && await bcrypt.compare(password, admin.password)) {
+      if (!admin.isActive) {
+        return res.render('admin/login', { message: 'Account is not activated. Please check your email for the activation link.' });
+      }
+      req.session.admin = admin;
+      res.redirect('/admin/dashboard');
+    } else {
+      res.render('admin/login', { message: 'Invalid email or password' });
     }
-
-    req.session.admin = admin;
-    res.redirect('/admin/dashboard');
   } catch (error) {
     console.error('Admin login error:', error);
     res.status(500).send('Internal server error');
   }
 });
 
-// Admin Dashboard
+// Admin Dashboard Route
 app.get('/admin/dashboard', ensureAdmin, (req, res) => {
   res.render('admin/dashboard');
 });
 
-app.post('/admin/upload-video', ensureAdmin, upload.single('video'), async (req, res) => {
+// Video Upload Route (for Admins)
+app.post('/upload', ensureAdmin, upload.single('video'), async (req, res) => {
   try {
     const { title, description } = req.body;
-    const video_path = req.file.path;
-    const newVideo = new Video({ title, description, video_path });
+    const videoPath = req.file.path;
+
+    const newVideo = new Video({
+      title,
+      description,
+      videoUrl: videoPath
+    });
+
     await newVideo.save();
+
     res.redirect('/admin/dashboard');
   } catch (error) {
     console.error('Video upload error:', error);
@@ -335,6 +331,7 @@ app.get('/index', (req, res) => {
     res.redirect('/login');
   }
 });
+
 
 // Video Page
 app.get('/video', async (req, res) => {
