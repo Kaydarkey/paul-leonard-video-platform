@@ -2,3 +2,4 @@
 
 # Ignore environment variable file
 .env
+node_modules
